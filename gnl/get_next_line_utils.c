@@ -1,72 +1,96 @@
 #include "get_next_line.h"
 
-size_t	ft_strlen(const char *str)
+static char	*build_raw_line(int fd, char *raw_line)
 {
-	size_t	i = 0;
-	if (!str)
-		return (0);
-	while (str[i])
-		i++;
-	return (i);
+	ssize_t	bytes;
+	char	*tmp;
+
+	bytes = 1;
+	char    *buffer = malloc(((size_t)BUFFER_SIZE) + 1);
+	while (check_for_newline(raw_line) < 0 && bytes > 0)
+	{
+		bytes = read(fd, buffer, BUFFER_SIZE);
+		if (bytes < 0)
+			return (free(buffer), free(raw_line),raw_line = NULL, NULL);
+		buffer[bytes] = '\0';
+		tmp = ft_strjoin(raw_line, buffer);
+		if (!tmp)
+			return(free(buffer), free(raw_line), NULL);
+		free(raw_line);
+		raw_line = tmp;
+	}
+	return (free(buffer), raw_line);
 }
 
-char	*ft_strdup(const char *s)
+static char	*extract_line(char *raw_line)
 {
 	size_t	i;
-	char	*out;
+	char	*line;
 
-	if (!s)
-		return (NULL);
-	out = malloc(ft_strlen(s) + 1);
-	if (!out)
+	if (!raw_line || !raw_line[0]) 
 		return (NULL);
 	i = 0;
-	while (s[i])
+	while (raw_line[i] && raw_line[i] != '\n')
+		i++;
+	line = malloc(i + 2);
+	if (!line)
+		return (NULL);
+	i = 0;
+	while (raw_line[i] && raw_line[i] != '\n')
 	{
-		out[i] = s[i];
+		line[i] = raw_line[i];
 		i++;
 	}
-	out[i] = '\0';
-	return (out);
+	if (raw_line[i] == '\n')
+		line[i++] = '\n';
+	line[i] = '\0';
+	return (line);
 }
 
-char	*ft_strjoin(char const *s1, char const *s2)
+static char	*update_raw_line(char *raw_line)
 {
-	size_t	i;
+	ssize_t	i;
 	size_t	j;
-	char	*out;
+	char	*new;
 
-	if (!s1 && !s2)
-		return (NULL);
-	if (!s1)
-		return(ft_strdup(s2));
-	if (!s2)
-		return(ft_strdup(s1));
-	out = malloc(ft_strlen(s1) + ft_strlen(s2) + 1);
-	if (!out)
-		return (NULL);
-	i = 0;
+	i = check_for_newline(raw_line);
+	if (i < 0)
+		return (free(raw_line), NULL);
+	i++;
+	new = malloc(ft_strlen(raw_line + i) + 1);
+	if (!new)
+		return (free(raw_line), NULL);
 	j = 0;
-	while (s1 && s1[j])
-		out[i++] = s1[j++];
-	j = 0;
-	while (s2 && s2[j])
-		out[i++] = s2[j++];
-	out[i] = '\0';
-	return (out);
+	while (raw_line[i])
+		new[j++] = raw_line[i++];
+	new[j] = '\0';
+	free(raw_line);
+	if (!new[0])
+		return (free(new), NULL);
+	return (new);
 }
 
-ssize_t	check_for_newline(char *string)
+char	*get_next_line(int fd)
 {
-	long	i = 0;
+	static char	*raw_line;
+	char		*line;
 
-	if (!string)
-		return (-1);
-	while (string[i])
+	if (fd < 0 || fd > 1024 || BUFFER_SIZE <= 0)
+		return (free(raw_line), NULL);
+	if (check_for_newline(raw_line) > 0)
 	{
-		if (string[i] == '\n')
-			return (i);
-		i++;
+		line = extract_line(raw_line);
+		if (!line)
+		 	return (free(raw_line), raw_line = NULL, NULL);
+		raw_line = update_raw_line(raw_line);
+		return (line);
 	}
-	return (-1);
+	raw_line = build_raw_line(fd, raw_line);
+	if (!raw_line)
+		return (NULL);
+	line = extract_line(raw_line);
+	if (!line)
+		return(free(raw_line), raw_line = NULL, NULL);
+	raw_line = update_raw_line(raw_line);
+	return (line);
 }
