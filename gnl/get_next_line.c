@@ -65,6 +65,8 @@ static char	*update_raw_line(char *raw_line)
 		new[j++] = raw_line[i++];
 	new[j] = '\0';
 	free(raw_line);
+	if (!new[0])
+		return (free(new), NULL);
 	return (new);
 }
 
