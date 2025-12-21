@@ -1,4 +1,4 @@
-*This project has been created as part of the 42 curriculum by <mel-herc>.*
+*This project has been created as part of the 42 curriculum by mel-herc.*
 
 # Description
 The **get_next_line** project consists of implementing a C function that reads a file
